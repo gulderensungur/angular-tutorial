@@ -196,3 +196,118 @@ Artık verileri task-item.html dosyasında kullanabiliriz.
   <p>{{ task.day }}</p>
 </div>
 ```
+
+## Day 3
+
+In this project, I want to add some styles if the reminder in task data is true. So, we go to _task-item.ts_ file and add _[ngClass] = “{reminder: tasks.reminder}”_ to div class that named task. Also, I want to change the reminder’s value when I click the task-item’s div. I can change the value like the way that I did in the previous deleteTask().
+
+Firstly I defined a function in task-item html file.
+
+```tsx
+<div
+  [ngClass]="{ reminder: task.reminder }"
+  class="task"
+  (dblclick)="onToggle(task)"
+>
+  <h3>
+    {{ task.text }}
+    <fa-icon
+      [ngStyle]="{ color: 'red' }"
+      [icon]="faTimes"
+      (click)="onDelete(task)"
+    ></fa-icon>
+  </h3>
+  <p>{{ task.day }}</p>
+</div>
+```
+
+In this code we can see dblclick function. Then we define this funtion in task-item.ts file.
+
+```tsx
+@Output() onToggleReminder: EventEmitter<Task> = new EventEmitter();
+
+onToggle(task: Task) {
+    this.onToggleReminder.emit(task);
+  }
+```
+
+We add codes on above and we will define function that describe for these function to parent component.(tasks component) We add _(onToggleReminder)="toggleReminder(task)”_ in tasks.component.html file.
+
+```tsx
+toggleReminder(task: Task) {
+    task.reminder = !task.reminder;
+    this.taskService.updateTaskReminder(task).subscribe();
+  }
+```
+
+And we see that undefined funtion named updateTaskReminder(). This function needs to be define in task.service because when we dont update in service our operation will lost when page is re-render.
+
+```tsx
+const httpOptions = {
+  headers: new HttpHeaders({
+    'Content-Type': 'application/json',
+  }),
+};
+
+updateTaskReminder(task: Task): Observable<Task> {
+    const url = `${this.apiUrl}/${task.id}`;
+    return this.http.put<Task>(url, task, httpOptions);
+  }
+}
+```
+
+On the above code, note that, put method take 3 different parametres. httpOption includes our additional information. But if we are update with put() method to something, we have to define httpOption. (see below quote)
+
+> HttpHeaders let the client and server share additional information http requests and response
+
+### Add Task:
+
+We created a add-task component. And we add form div in add-task.html. There is an important thing here. let me check codes.
+
+```tsx
+<form class="add-form" (ngSubmit)="onSubmit()">
+  <div class="form-control">
+    <label for="text">Add Task</label>
+    <input
+      type="text"
+      name="text"
+      [(ngModel)]="text"
+      id="text"
+      placeholder="Add Task"
+    />
+  </div>
+  <div class="form-control">
+    <label for="text">Day & Time</label>
+    <input
+      type="text"
+      name="day"
+      [(ngModel)]="day"
+      id="day"
+      placeholder="Add Day & Time"
+    />
+  </div>
+  <div class="form-control form-control-check">
+    <label for="reminder">Reminder</label>
+    <input
+      type="checkbox"
+      name="reminder"
+      [(ngModel)]="reminder"
+      id="reminder"
+    />
+  </div>
+
+  <input type="submit" value="Save Text" class="btn btn-block" />
+</form>
+```
+
+We see that [(ngModel)] = “value” this is for two way binding. And also we see that ngSubmit function for submit to form. We saw the previous part that how to add method/function to both of parent and child.
+
+**Two way data binding:**
+
+İki yönlü veri bağlama, veri giriş formlarında kullanışlıdır. Bir kullanıcı bir form alanında değişiklik yaptığında, modelimizi güncellemek isteriz. Benzer şekilde, modeli yeni verilerle güncellediğimizde görünümü de güncellemek istiyoruz.
+
+**ngModel:**
+
+The Angular uses the `ngModel` directive to achieve the two-way binding on HTML Form elements. It binds to a form element like `input`, `select`, `selectarea`. etc.
+
+The `ngModel`directive is not part of the Angular Core library. It is part of the `FormsModule`library. You need to import the `FormsModule`package into your Angular module.
