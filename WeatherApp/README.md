@@ -1,5 +1,3 @@
-# Weather Application
-
 This is a basic application that shows the weather information that fetches the data from an open API. (RapidAPI)
 
 Firstly we created an application interface.
