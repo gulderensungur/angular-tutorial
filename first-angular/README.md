@@ -311,3 +311,163 @@ We see that [(ngModel)] = “value” this is for two way binding. And also we s
 The Angular uses the `ngModel` directive to achieve the two-way binding on HTML Form elements. It binds to a form element like `input`, `select`, `selectarea`. etc.
 
 The `ngModel`directive is not part of the Angular Core library. It is part of the `FormsModule`library. You need to import the `FormsModule`package into your Angular module.
+
+### **Understand difference between constructor & ngOnInit()**
+
+Starting with the basics, the main role of ngOnInit is to provide a signal that Angular has done initializing the component and that users can roll on further. The constructor, on the other hand, is significantly used to initialize the class members but it is unable to perform the whole work. It is only beneficial in the case of dependency injection and initialization of the class field. That being said, the compiler should actually avoid writing the work on Constructor. ngOnInit is a better place to write work code that is required at the time of class instantiation.
+
+### Toogle Button & UI Service
+
+If an operation affects on more than one components, we use UI service. For example, in our task project, add-task component should be invisible. When we click Add button, add-task component will be visible and button’s color and text will be changed. So when we click the add button we have one more than the destination component. When we create ui.service file we need to import Observable and Subject. The way to communicate between components is to use an `Observable`
+ and a `Subject` (which is a type of observable)
+
+**Subject:**
+
+A Subject is like an Observable, but can multicast to many Observers. Subjects are like EventEmitters: they maintain a registry of many listeners.(See [here](https://rxjs.dev/guide/subject))
+
+```tsx
+import { Injectable } from "@angular/core";
+import { faTachographDigital } from "@fortawesome/free-solid-svg-icons";
+import { Observable, Subject } from "rxjs";
+
+@Injectable({
+  providedIn: "root",
+})
+export class UiService {
+  private showAddTask: boolean = false;
+  private subject = new Subject<any>();
+
+  constructor() {}
+
+  toggleAddTask(): void {
+    this.showAddTask = !this.showAddTask;
+    //if we want to clear all thing we use "this.subject.next()";
+    this.subject.next(this.showAddTask);
+  }
+
+  onToggle(): Observable<any> {
+    return this.subject.asObservable();
+  }
+}
+```
+
+**Subject**.**next();**
+
+The subject next method is used to send messages to an observable which are then sent to all angular components that are subscribers of that observable.
+
+After we create ui.service we organized the affected component when click the add button. So we will go to header and add-task component.
+
+**header.component.ts:**
+
+```tsx
+import { Component, OnInit } from "@angular/core";
+import { UiService } from "../../services/ui.service";
+import { Subscription } from "rxjs";
+@Component({
+  selector: "app-header",
+  templateUrl: "./header.component.html",
+  styleUrls: ["./header.component.css"],
+})
+export class HeaderComponent implements OnInit {
+  title: string = "Task Tracker";
+  showAddTask!: boolean;
+  subscription!: Subscription;
+
+  constructor(private uiService: UiService) {
+    this.subscription = this.uiService
+      .onToggle()
+      .subscribe((value) => (this.showAddTask = value));
+  }
+
+  ngOnInit(): void {}
+
+  toggleAddTask() {
+    this.uiService.toggleAddTask();
+  }
+}
+```
+
+In here we import Subscription that we haven’t talked about before. (Subscription, bir Observable’ın yürütülmesi gibi tek kullanımlık bir kaynağı temsil eder.) There is an important thing that I mention about it. You can see the constructor hook on above code. When I code ui.service.ts file, I defined default value of _showAddTask_’s as a false and then I change the value in _toggleAddTask()_ function.
+
+But when I go to my toogleAddTask function in header.component.ts file and I call the same function from uiService, I reliaze that showAddTask value didn’t update althought indicate in the toggleAddTask in uiService. This situation caused that there is no change when I click the add button. Thats why we add subscription and th other codes in constructor hook.
+
+Also, I need to apply all the subscription operation in the add-task component.
+
+```tsx
+import { Component, OnInit, Output, EventEmitter } from "@angular/core";
+import { UiService } from "src/app/services/ui.service";
+import { Subscription } from "rxjs";
+
+@Component({
+  selector: "app-add-task",
+  templateUrl: "./add-task.component.html",
+  styleUrls: ["./add-task.component.css"],
+})
+export class AddTaskComponent implements OnInit {
+  @Output() onAddTask = new EventEmitter();
+
+  text!: string;
+  day!: string;
+  reminder: boolean = false;
+  showAddTask!: boolean;
+  subscription = new Subscription();
+
+  constructor(private uiService: UiService) {
+    this.subscription = this.uiService
+      .onToggle()
+      .subscribe((value) => (this.showAddTask = value));
+  }
+
+  ngOnInit(): void {}
+
+  onSubmit() {
+    if (!this.text) {
+      alert("Task field can not be empty!");
+      return;
+    }
+
+    const newTask = {
+      text: this.text,
+      day: this.day,
+      reminder: this.reminder,
+    };
+
+    this.onAddTask.emit(newTask);
+
+    this.text = "";
+    this.day = "";
+    this.reminder = false;
+  }
+}
+```
+
+And the last step is, change the visiblity of add-task form in ui. So, we add \*_ngIf="showAddTask” code in add-task.component in html. So now, if showAddTask is false. my add-task form doesnt seen in ui._
+
+**Angular Router:**
+
+If we if we didn’t select the option to add a router when creating the project, we need to add to app.module.
+
+```tsx
+import { RouterModule, Routes } from "@angular/router";
+
+const appRoutes: Routes = [
+  { path: "", component: TasksComponent },
+  { path: "about", component: AboutComponent },
+];
+
+//we add this code to imports in NgModule
+//enable tracing is for debug for router
+RouterModule.forRoot(appRoutes, { enableTracing: true });
+```
+
+After add Router to app.module we create about component and add these to html file.
+
+```tsx
+<div>
+  <h2>About</h2>
+  <h4>Version: 1.0.0</h4>
+  <a routerLink="/">Go back</a>
+</div>
+```
+
+About components path already defined in app.module.
